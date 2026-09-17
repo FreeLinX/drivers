@@ -6,8 +6,8 @@ TARGET  := x86_64-linux-musl
 CFLAGS  ?= -O3 -Wall -Wextra --target=$(TARGET) --sysroot=$(SYSROOT)
 LDFLAGS ?= -fuse-ld=lld --rtlib=compiler-rt -static -lm
 
-BIN     := flx-3dtest
-SRC     := flx-3dtest.c
+BIN     := flx3dtest
+SRC     := flx3dtest.c
 
 all: $(BIN)
 

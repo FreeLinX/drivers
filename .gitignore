@@ -13,8 +13,8 @@
 .*.d
 
 # Built binaries
-flx-driver/flx-driver
-flx-3dtest/flx-3dtest
+flxdriver/flxdriver
+flx3dtest/flx3dtest
 audio/tinyalsa/tinymix
 audio/tinyalsa/tinyplay
 audio/tinyalsa/tinycap

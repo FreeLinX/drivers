@@ -1,12 +1,13 @@
 /*
- * FreeLinX GPT Partitioning Utility (flx-part)
+ * FreeLinX GPT Partitioning Utility (flxpart)
  *
  * Fully autonomous, BSD-2-Clause GPT partition table creator and inspector.
  * Creates standard UEFI-compliant GPT tables with:
  *   - Protective MBR (LBA 0)
  *   - Primary GPT Header (LBA 1) & Entries (LBA 2..33)
  *   - ESP Partition (512MB, Type C12A7328-F81F-11D2-BA4B-00A0C93EC93B)
- *   - Root Partition (Remainder, Type 0FC63DAF-8483-4772-8E79-3D69D8477DE4)
+ *   - BIOS Boot Partition (1MB, Type 21686148-6449-6E6F-744E-656564454649)
+ *   - Home/Data Partition (Remainder, Type 0FC63DAF-8483-4772-8E79-3D69D8477DE4)
  *   - Backup GPT Entries & Backup GPT Header
  *
  * Re-reads kernel partition table via ioctl(BLKRRPART).
@@ -27,7 +28,11 @@
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
-#include <linux/fs.h>
+/* Kernel partition ioctls (from <linux/fs.h>); defined locally so the
+ * tool stays portable across musl-only build environments that lack
+ * the kernel UAPI headers. */
+#define BLKRRPART     _IO(0x12, 95)          /* re-read partition table */
+#define BLKGETSIZE64  _IOR(0x12, 114, size_t) /* device size in bytes */
 
 #define SECTOR_SIZE 512
 #define GPT_ENTRIES 128
@@ -103,6 +108,12 @@ static const guid_t GUID_ESP = {
 /* Linux Generic Filesystem Data: 0FC63DAF-8483-4772-8E79-3D69D8477DE4 */
 static const guid_t GUID_LINUX_ROOT = {
     0x0FC63DAF, 0x8483, 0x4772, 0x8E, 0x79, { 0x3D, 0x69, 0xD8, 0x47, 0x7D, 0xE4 }
+};
+
+/* BIOS Boot Partition: 21686148-6449-6E6F-744E-656564454649 */
+/* Required on GPT for Limine (and GRUB) Legacy/BIOS bootstrap. */
+static const guid_t GUID_BIOS_BOOT = {
+    0x21686148, 0x6449, 0x6E6F, 0x74, 0x4E, { 0x65, 0x65, 0x64, 0x45, 0x46, 0x49 }
 };
 
 /* CRC-32 (IEEE 802.3) */
@@ -182,10 +193,10 @@ static uint64_t get_device_size(int fd) {
 }
 
 static void print_usage(const char *prog) {
-    printf("FreeLinX GPT Partitioning Utility (flx-part)\n");
+    printf("FreeLinX GPT Partitioning Utility (flxpart)\n");
     printf("Usage: %s [options] <device>\n", prog);
     printf("Options:\n");
-    printf("  --create-standard    Create ESP (512MB) + Linux Root (remainder)\n");
+    printf("  --create-standard    Create ESP (512MB) + BIOS Boot (1MB) + Linux Home/Data (remainder)\n");
     printf("  --esp-size <MB>      Set ESP partition size in MB (default: 512)\n");
     printf("  --show               Show partition table of device\n");
     printf("  --help               Display this help message\n");
@@ -321,8 +332,14 @@ int main(int argc, char **argv) {
     uint64_t esp_start = 2048; /* 1MB boundary */
     uint64_t esp_end = esp_start + esp_sectors - 1;
 
+    /* BIOS Boot partition: 1MB (2048 sectors), required by Limine/GRUB on GPT
+     * for legacy BIOS bootstrap. */
+    uint64_t bios_boot_sectors = (1 * 1024 * 1024) / SECTOR_SIZE;
+    uint64_t bios_start = esp_end + 1;
+    uint64_t bios_end = bios_start + bios_boot_sectors - 1;
+
     uint64_t last_usable = total_sectors - 34;
-    uint64_t root_start = esp_end + 1;
+    uint64_t root_start = bios_end + 1;
     uint64_t root_end = last_usable;
 
     /* Partition 1: ESP */
@@ -333,13 +350,21 @@ int main(int argc, char **argv) {
     entries[0].attributes = 0;
     ascii_to_utf16le("EFI System Partition", entries[0].name, 36);
 
-    /* Partition 2: Linux Root */
-    entries[1].type_guid = GUID_LINUX_ROOT;
+    /* Partition 2: BIOS Boot (no filesystem, for limine bios-install) */
+    entries[1].type_guid = GUID_BIOS_BOOT;
     generate_uuid(&entries[1].unique_guid);
-    entries[1].starting_lba = root_start;
-    entries[1].ending_lba = root_end;
+    entries[1].starting_lba = bios_start;
+    entries[1].ending_lba = bios_end;
     entries[1].attributes = 0;
-    ascii_to_utf16le("FreeLinX Root", entries[1].name, 36);
+    ascii_to_utf16le("FreeLinX BIOS Boot", entries[1].name, 36);
+
+    /* Partition 3: Linux Data (used as persistent /home) */
+    entries[2].type_guid = GUID_LINUX_ROOT;
+    generate_uuid(&entries[2].unique_guid);
+    entries[2].starting_lba = root_start;
+    entries[2].ending_lba = root_end;
+    entries[2].attributes = 0;
+    ascii_to_utf16le("FreeLinX Home", entries[2].name, 36);
 
     uint32_t entries_crc = crc32(entries, sizeof(entries));
 
@@ -416,9 +441,10 @@ int main(int argc, char **argv) {
     }
     close(fd);
 
-    char esp_uuid[64], root_uuid[64];
+    char esp_uuid[64], bios_uuid[64], root_uuid[64];
     format_guid(&entries[0].unique_guid, esp_uuid, sizeof(esp_uuid));
-    format_guid(&entries[1].unique_guid, root_uuid, sizeof(root_uuid));
+    format_guid(&entries[1].unique_guid, bios_uuid, sizeof(bios_uuid));
+    format_guid(&entries[2].unique_guid, root_uuid, sizeof(root_uuid));
 
     /* Print shell-parseable output variables for the installer script */
     printf("\n[SUCCESS] GPT Partition Table written successfully!\n");
@@ -426,10 +452,14 @@ int main(int argc, char **argv) {
     printf("FLX_PART1_END=%llu\n", (unsigned long long)esp_end);
     printf("FLX_PART1_SIZE_MB=%llu\n", (unsigned long long)esp_size_mb);
     printf("FLX_PART1_UUID=%s\n", esp_uuid);
-    printf("FLX_PART2_START=%llu\n", (unsigned long long)root_start);
-    printf("FLX_PART2_END=%llu\n", (unsigned long long)root_end);
-    printf("FLX_PART2_SIZE_MB=%llu\n", (unsigned long long)(((root_end - root_start + 1) * SECTOR_SIZE) / (1024 * 1024)));
-    printf("FLX_PART2_UUID=%s\n", root_uuid);
+    printf("FLX_PART2_START=%llu\n", (unsigned long long)bios_start);
+    printf("FLX_PART2_END=%llu\n", (unsigned long long)bios_end);
+    printf("FLX_PART2_SIZE_MB=%llu\n", (unsigned long long)(1));
+    printf("FLX_PART2_UUID=%s\n", bios_uuid);
+    printf("FLX_PART3_START=%llu\n", (unsigned long long)root_start);
+    printf("FLX_PART3_END=%llu\n", (unsigned long long)root_end);
+    printf("FLX_PART3_SIZE_MB=%llu\n", (unsigned long long)(((root_end - root_start + 1) * SECTOR_SIZE) / (1024 * 1024)));
+    printf("FLX_PART3_UUID=%s\n", root_uuid);
 
     return 0;
 }

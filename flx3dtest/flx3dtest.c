@@ -1,5 +1,5 @@
 /*
- * FreeLinX 3D GPU Driver Test & Benchmark Tool (flx-3dtest)
+ * FreeLinX 3D GPU Driver Test & Benchmark Tool (flx3dtest)
  *
  * Copyright (c) 2026 FreeLinX Project
  * Author: FreeLinX Graphics Team
@@ -405,7 +405,7 @@ static int run_benchmark(int total_frames) {
 }
 
 static void print_usage(const char *prog) {
-    printf("FreeLinX 3D GPU Driver Test Tool (flx-3dtest) v%s\n", VERSION);
+    printf("FreeLinX 3D GPU Driver Test Tool (flx3dtest) v%s\n", VERSION);
     printf("Usage: %s [options]\n\n", prog);
     printf("Options:\n");
     printf("  -d, --drm           Run DRM/KMS driver diagnostics only\n");
@@ -431,7 +431,7 @@ int main(int argc, char *argv[]) {
         } else if (strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--interactive") == 0) {
             mode = 0;
         } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
-            printf("flx-3dtest %s (FreeLinX no-GNU 3D Driver Test Suite)\nLicense: BSD-2-Clause\n", VERSION);
+            printf("flx3dtest %s (FreeLinX no-GNU 3D Driver Test Suite)\nLicense: BSD-2-Clause\n", VERSION);
             return 0;
         } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
             print_usage(argv[0]);

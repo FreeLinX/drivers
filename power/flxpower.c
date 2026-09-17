@@ -1,5 +1,5 @@
 /*
- * FreeLinX Power & Hardware Management Utility (flx-power)
+ * FreeLinX Power & Hardware Management Utility (flxpower)
  *
  * Lightweight, non-GNU hardware power, battery, brightness, and governor utility.
  * Reads directly from Linux sysfs (/sys/class/power_supply, /sys/class/backlight,
@@ -290,7 +290,7 @@ static void show_battery_raw(void) {
 }
 
 static void print_usage(const char *prog) {
-    printf("FreeLinX Power Management Utility (flx-power)\n");
+    printf("FreeLinX Power Management Utility (flxpower)\n");
     printf("Usage: %s [command] [args...]\n\n", prog);
     printf("Commands:\n");
     printf("  status (or no args)      Display complete power, battery & thermal state\n");

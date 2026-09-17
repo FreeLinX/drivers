@@ -22,22 +22,22 @@ mkdir -p "$TARGET_ROOTFS/bin" \
          "$TARGET_ROOTFS/etc" \
          "$TARGET_ROOTFS/media"
 
-# 1. Install flx-driver
-echo "[1/10] Installing flx-driver..."
-make -C "$SCRIPT_DIR/flx-driver" install DESTDIR="$TARGET_ROOTFS"
+# 1. Install flxdriver
+echo "[1/10] Installing flxdriver..."
+make -C "$SCRIPT_DIR/flxdriver" install DESTDIR="$TARGET_ROOTFS"
 
 # 2. Install TinyALSA audio subsystem
 echo "[2/10] Installing TinyALSA audio subsystem..."
 mkdir -p "$TARGET_ROOTFS/usr/include/tinyalsa"
 make -C "$SCRIPT_DIR/audio/tinyalsa" install DESTDIR="$TARGET_ROOTFS"
 
-# 3. Install flx-3dtest 3D GPU test tool
-echo "[3/10] Installing flx-3dtest 3D GPU test tool..."
-make -C "$SCRIPT_DIR/flx-3dtest" install DESTDIR="$TARGET_ROOTFS"
+# 3. Install flx3dtest 3D GPU test tool
+echo "[3/10] Installing flx3dtest 3D GPU test tool..."
+make -C "$SCRIPT_DIR/flx3dtest" install DESTDIR="$TARGET_ROOTFS"
 
 # 4. Install essential firmware
 echo "[4/10] Installing essential firmware blobs..."
-"$SCRIPT_DIR/firmware/flx-firmware.sh" "$TARGET_ROOTFS"
+"$SCRIPT_DIR/firmware/flxfirmware.sh" "$TARGET_ROOTFS"
 
 # 5. Install out-of-tree kernel modules
 echo "[5/10] Installing out-of-tree kernel modules..."
@@ -52,16 +52,16 @@ if [ -f "$DEP_FILE" ]; then
     fi
 fi
 
-# 6. Power Management (flx-power, zzz, ZZZ)
+# 6. Power Management (flxpower, zzz, ZZZ)
 echo "[6/10] Installing Power Management utilities..."
-install -m 755 "$SCRIPT_DIR/power/flx-power" "$TARGET_ROOTFS/usr/bin/flx-power"
+install -m 755 "$SCRIPT_DIR/power/flxpower" "$TARGET_ROOTFS/usr/bin/flxpower"
 install -m 755 "$SCRIPT_DIR/power/zzz" "$TARGET_ROOTFS/usr/bin/zzz"
 install -m 755 "$SCRIPT_DIR/power/ZZZ" "$TARGET_ROOTFS/usr/bin/ZZZ"
 
-# 7. Bare-Metal Installer & Partitioning (flx-part, flx-install)
-echo "[7/10] Installing Bare-Metal Installer (flx-part, flx-install)..."
-install -m 755 "$SCRIPT_DIR/installer/flx-part" "$TARGET_ROOTFS/sbin/flx-part"
-install -m 755 "$SCRIPT_DIR/installer/flx-install" "$TARGET_ROOTFS/sbin/flx-install"
+# 7. Bare-Metal Installer & Partitioning (flxpart, flxinstall)
+echo "[7/10] Installing Bare-Metal Installer (flxpart, flxinstall)..."
+install -m 755 "$SCRIPT_DIR/installer/flxpart" "$TARGET_ROOTFS/sbin/flxpart"
+install -m 755 "$SCRIPT_DIR/installer/flxinstall" "$TARGET_ROOTFS/sbin/flxinstall"
 
 # 8. Limine Bootloader
 echo "[8/10] Installing Limine Bootloader files..."
@@ -119,12 +119,12 @@ if [ -x "$MDEVD_DIR/mdevd-coldplug" ]; then
     install -m 755 "$MDEVD_DIR/mdevd-coldplug" "$TARGET_ROOTFS/sbin/mdevd-coldplug"
 fi
 
-install -m 755 "$SCRIPT_DIR/hotplug/flx-automount" "$TARGET_ROOTFS/sbin/flx-automount"
-install -m 755 "$SCRIPT_DIR/hotplug/flx-driver-hotplug" "$TARGET_ROOTFS/sbin/flx-driver-hotplug"
+install -m 755 "$SCRIPT_DIR/hotplug/flxautomount" "$TARGET_ROOTFS/sbin/flxautomount"
+install -m 755 "$SCRIPT_DIR/hotplug/flxdriverhotplug" "$TARGET_ROOTFS/sbin/flxdriverhotplug"
 install -m 644 "$SCRIPT_DIR/hotplug/mdev.conf" "$TARGET_ROOTFS/etc/mdev.conf"
 
 install -m 600 "$SCRIPT_DIR/user/doas.conf" "$TARGET_ROOTFS/etc/doas.conf"
-install -m 755 "$SCRIPT_DIR/user/flx-adduser" "$TARGET_ROOTFS/sbin/flx-adduser"
+install -m 755 "$SCRIPT_DIR/user/flxadduser" "$TARGET_ROOTFS/sbin/flxadduser"
 
 if [ -f "$TARGET_ROOTFS/usr/bin/doas" ]; then
     chmod 4755 "$TARGET_ROOTFS/usr/bin/doas"
