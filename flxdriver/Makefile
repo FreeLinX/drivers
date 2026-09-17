@@ -6,8 +6,8 @@ TARGET  := x86_64-linux-musl
 CFLAGS  ?= -O2 -Wall -Wextra --target=$(TARGET) --sysroot=$(SYSROOT)
 LDFLAGS ?= -fuse-ld=lld --rtlib=compiler-rt -static
 
-BIN     := flx-driver
-SRC     := flx-driver.c
+BIN     := flxdriver
+SRC     := flxdriver.c
 
 all: $(BIN)
 

@@ -2,7 +2,7 @@
 # BSD 2-Clause License
 # Copyright (c) 2026 FreeLinX Project
 
-SUBDIRS := flx-driver audio/tinyalsa flx-3dtest power installer modules
+SUBDIRS := flxdriver audio/tinyalsa flx3dtest power installer modules
 ROOTFS  ?= /home/devuan/FreeLinX/src/rootfs
 
 all:

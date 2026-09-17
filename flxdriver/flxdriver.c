@@ -1,5 +1,5 @@
 /*
- * FreeLinX Driver Manager (flx-driver)
+ * FreeLinX Driver Manager (flxdriver)
  *
  * Copyright (c) 2026 FreeLinX Project
  * BSD 2-Clause License
@@ -481,7 +481,7 @@ static int cmd_status(void) {
             closedir(fd);
         }
     } else {
-        printf("  /lib/firmware: \033[31mNot found\033[0m (Run 'flx-firmware install' to populate)\n");
+        printf("  /lib/firmware: \033[31mNot found\033[0m (Run 'flxfirmware install' to populate)\n");
     }
 
     /* 3. DRM / Graphics */
@@ -595,7 +595,7 @@ static int cmd_gpu(void) {
 }
 
 static void print_usage(const char *prog) {
-    printf("FreeLinX Driver Manager (flx-driver) v%s\n", VERSION);
+    printf("FreeLinX Driver Manager (flxdriver) v%s\n", VERSION);
     printf("Usage: %s <command> [options]\n\n", prog);
     printf("Commands:\n");
     printf("  scan, ls       Scan and list all PCI/USB hardware and driver bindings\n");
@@ -629,7 +629,7 @@ int main(int argc, char *argv[]) {
     } else if (strcmp(cmd, "net") == 0 || strcmp(cmd, "wifi") == 0) {
         return cmd_net();
     } else if (strcmp(cmd, "version") == 0 || strcmp(cmd, "-v") == 0 || strcmp(cmd, "--version") == 0) {
-        printf("flx-driver %s (FreeLinX no-GNU Hardware Subsystem)\nLicense: BSD-2-Clause\n", VERSION);
+        printf("flxdriver %s (FreeLinX no-GNU Hardware Subsystem)\nLicense: BSD-2-Clause\n", VERSION);
         return 0;
     } else if (strcmp(cmd, "help") == 0 || strcmp(cmd, "-h") == 0 || strcmp(cmd, "--help") == 0) {
         print_usage(argv[0]);

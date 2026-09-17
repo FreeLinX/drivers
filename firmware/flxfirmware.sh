@@ -1,5 +1,5 @@
 #!/bin/sh
-# FreeLinX Firmware Manager (flx-firmware)
+# FreeLinX Firmware Manager (flxfirmware)
 #
 # BSD 2-Clause License
 # Copyright (c) 2026 FreeLinX Project

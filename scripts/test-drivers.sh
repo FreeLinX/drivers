@@ -9,10 +9,10 @@ SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 echo "=== Testing FreeLinX Driver Subsystem ==="
 
-# 1. Test flx-driver binary
-echo -n "Testing flx-driver executable... "
-if [ -x "$SCRIPT_DIR/flx-driver/flx-driver" ]; then
-    "$SCRIPT_DIR/flx-driver/flx-driver" version >/dev/null
+# 1. Test flxdriver binary
+echo -n "Testing flxdriver executable... "
+if [ -x "$SCRIPT_DIR/flxdriver/flxdriver" ]; then
+    "$SCRIPT_DIR/flxdriver/flxdriver" version >/dev/null
     echo "OK (Static ELF)"
 else
     echo "FAIL (Binary not executable)"
@@ -29,33 +29,33 @@ for util in tinymix tinyplay tinycap tinypcminfo; do
 done
 echo "OK (All 4 tools present and static)"
 
-# 3. Test flx-3dtest binary
-echo -n "Testing flx-3dtest 3D engine... "
-if [ -x "$SCRIPT_DIR/flx-3dtest/flx-3dtest" ]; then
-    "$SCRIPT_DIR/flx-3dtest/flx-3dtest" -v >/dev/null
+# 3. Test flx3dtest binary
+echo -n "Testing flx3dtest 3D engine... "
+if [ -x "$SCRIPT_DIR/flx3dtest/flx3dtest" ]; then
+    "$SCRIPT_DIR/flx3dtest/flx3dtest" -v >/dev/null
     echo "OK (Static ELF 3D Engine)"
 else
-    echo "FAIL (flx-3dtest missing)"
+    echo "FAIL (flx3dtest missing)"
     exit 1
 fi
 
 # 4. Test Power Management
-echo -n "Testing flx-power management... "
-if [ -x "$SCRIPT_DIR/power/flx-power" ]; then
-    "$SCRIPT_DIR/power/flx-power" battery >/dev/null
+echo -n "Testing flxpower management... "
+if [ -x "$SCRIPT_DIR/power/flxpower" ]; then
+    "$SCRIPT_DIR/power/flxpower" battery >/dev/null
     echo "OK (Static ELF Power Manager)"
 else
-    echo "FAIL (flx-power missing)"
+    echo "FAIL (flxpower missing)"
     exit 1
 fi
 
 # 5. Test GPT Partitioner
-echo -n "Testing flx-part partitioning engine... "
-if [ -x "$SCRIPT_DIR/installer/flx-part" ]; then
-    "$SCRIPT_DIR/installer/flx-part" --help >/dev/null
+echo -n "Testing flxpart partitioning engine... "
+if [ -x "$SCRIPT_DIR/installer/flxpart" ]; then
+    "$SCRIPT_DIR/installer/flxpart" --help >/dev/null
     echo "OK (Static ELF GPT Engine)"
 else
-    echo "FAIL (flx-part missing)"
+    echo "FAIL (flxpart missing)"
     exit 1
 fi
 
@@ -68,9 +68,9 @@ else
     exit 1
 fi
 
-# 7. Test flx-driver scan output
+# 7. Test flxdriver scan output
 echo "Testing hardware scan..."
-"$SCRIPT_DIR/flx-driver/flx-driver" scan | head -n 12
+"$SCRIPT_DIR/flxdriver/flxdriver" scan | head -n 12
 
 echo ""
 echo "=== All FreeLinX Hardware & Driver Subsystem tests passed! ==="
