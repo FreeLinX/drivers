@@ -1,5 +1,8 @@
 # FreeLinX Out-of-Tree Kernel Modules Top-Level Makefile
 
+# Shared configuration (no hard-coded developer paths).
+include ../mk/common.mk
+
 MODULES := flx-dummy
 
 all:

@@ -40,17 +40,17 @@ In FreeLinX, device support is strictly non-GNU and divided into two layers:
 
 | Directory | Component | License | Description |
 | :--- | :--- | :--- | :--- |
-| [`flxdriver/`](file:///home/devuan/FreeLinX/drivers/flxdriver) | **Driver Manager** | BSD 2-Clause | C99 hardware detection & auto-probing engine. Scans PCI/USB, maps device IDs, resolves missing modules, and loads drivers via `/sbin/modprobe`. |
-| [`flx3dtest/`](file:///home/devuan/FreeLinX/drivers/flx3dtest) | **3D GPU Tester** | BSD 2-Clause | Direct DRM/KMS hardware diagnostic validator, 3D vertex transform pipeline, and realtime ANSI/Z-buffer renderer and benchmark. |
-| [`power/`](file:///home/devuan/FreeLinX/drivers/power) | **Power Management** | BSD 2-Clause | Battery capacity/wattage monitoring, screen backlight adjustment (`flxpower brightness`), CPU governors (`flxpower governor`), and BSD sleep (`zzz`). |
-| [`installer/`](file:///home/devuan/FreeLinX/drivers/installer) | **Bare-Metal Installer** | BSD 2-Clause | C99 GPT partitioning engine (`flxpart`) and automated installer (`flxinstall`) with Limine UEFI/BIOS bootloader and ext4/FAT32 setup. |
-| [`bootloader/`](file:///home/devuan/FreeLinX/drivers/bootloader) | **Limine Bootloader** | BSD 2-Clause / CC0 | Modern, lightweight bootloader supporting x86_64 UEFI (`BOOTX64.EFI`) and BIOS (`limine-bios.sys`). |
-| [`hotplug/`](file:///home/devuan/FreeLinX/drivers/hotplug) | **Device Hotplug** | ISC / BSD | `mdevd` netlink daemon, `/etc/mdev.conf` device permissions, `/sbin/flxautomount` USB storage mounter, and driver auto-prober. |
-| [`user/`](file:///home/devuan/FreeLinX/drivers/user) | **Security & Users** | ISC / BSD | OpenBSD `doas` integration, `/etc/doas.conf` (wheel group rules), and `flxadduser` desktop provisioning script. |
-| [`audio/tinyalsa/`](file:///home/devuan/FreeLinX/drivers/audio/tinyalsa) | **Audio Driver** | BSD 3-Clause | Android/BSD minimal ALSA library & utilities. Replaces GNU/LGPL `alsa-lib` with static `tinymix`, `tinyplay`, `tinycap`, `tinypcminfo`. |
-| [`firmware/`](file:///home/devuan/FreeLinX/drivers/firmware) | **Firmware Manager** | Permissive/Redist | Stages essential vendor firmware blobs for Wi-Fi (Intel `iwlwifi`, Realtek `rtw88`/`rtw89`, Atheros `ath9k`/`ath10k`, Broadcom `brcm`) into `/lib/firmware`. |
-| [`modules/`](file:///home/devuan/FreeLinX/drivers/modules) | **Kernel Modules** | Dual BSD/GPL | Build framework for compiling out-of-tree kernel modules against FreeLinX kernel with Clang/LLVM (`LLVM=1 LLVM_IAS=1`). Includes reference driver `flx_dummy`. |
-| [`scripts/`](file:///home/devuan/FreeLinX/drivers/scripts) | **Build & Test** | BSD 2-Clause | Rootfs staging script (`stage-rootfs.sh`) and verification test suite (`test-drivers.sh`). |
+| [`flxdriver/`](flxdriver) | **Driver Manager** | BSD 2-Clause | C99 hardware detection & auto-probing engine. Scans PCI/USB, maps device IDs, resolves missing modules, and loads drivers via `/sbin/modprobe`. |
+| [`flx3dtest/`](flx3dtest) | **3D GPU Tester** | BSD 2-Clause | Direct DRM/KMS hardware diagnostic validator, 3D vertex transform pipeline, and realtime ANSI/Z-buffer renderer and benchmark. |
+| [`power/`](power) | **Power Management** | BSD 2-Clause | Battery capacity/wattage monitoring, screen backlight adjustment (`flxpower brightness`), CPU governors (`flxpower governor`), and BSD sleep (`zzz`). |
+| [`installer/`](installer) | **Bare-Metal Installer** | BSD 2-Clause | C99 GPT partitioning engine (`flxpart`) and automated installer (`flxinstall`) with Limine UEFI/BIOS bootloader and ext4/FAT32 setup. |
+| [`bootloader/`](bootloader) | **Limine Bootloader** | BSD 2-Clause / CC0 | Modern, lightweight bootloader supporting x86_64 UEFI (`BOOTX64.EFI`) and BIOS (`limine-bios.sys`). |
+| [`hotplug/`](hotplug) | **Device Hotplug** | ISC / BSD | `mdevd` netlink daemon, `/etc/mdev.conf` device permissions, `/sbin/flxautomount` USB storage mounter, and driver auto-prober. |
+| [`user/`](user) | **Security & Users** | ISC / BSD | OpenBSD `doas` integration, `/etc/doas.conf` (wheel group rules), and `flxadduser` desktop provisioning script. |
+| [`audio/tinyalsa/`](audio/tinyalsa) | **Audio Driver** | BSD 3-Clause | Android/BSD minimal ALSA library & utilities. Replaces GNU/LGPL `alsa-lib` with static `tinymix`, `tinyplay`, `tinycap`, `tinypcminfo`. |
+| [`firmware/`](firmware) | **Firmware Manager** | Permissive/Redist | Stages essential vendor firmware blobs for Wi-Fi (Intel `iwlwifi`, Realtek `rtw88`/`rtw89`, Atheros `ath9k`/`ath10k`, Broadcom `brcm`) into `/lib/firmware`. |
+| [`modules/`](modules) | **Kernel Modules** | Dual BSD/GPL | Build framework for compiling out-of-tree kernel modules against FreeLinX kernel with Clang/LLVM (`LLVM=1 LLVM_IAS=1`). Includes reference driver `flx_dummy`. |
+| [`scripts/`](scripts) | **Build & Test** | BSD 2-Clause | Rootfs staging script (`stage-rootfs.sh`) and verification test suite (`test-drivers.sh`). |
 
 ---
 
