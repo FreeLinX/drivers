@@ -1,9 +1,14 @@
 # FreeLinX 3D Driver Test Tool Makefile
-CC      := /home/devuan/FreeLinX/toolchain/bin/clang
-SYSROOT := /home/devuan/FreeLinX/toolchain/x86_64-linux-musl
-TARGET  := x86_64-linux-musl
+# Shared toolchain configuration (no hard-coded developer paths); all
+# FREELINX_* variables are overridable from the environment.
+include ../mk/common.mk
 
-CFLAGS  ?= -O3 -Wall -Wextra --target=$(TARGET) --sysroot=$(SYSROOT)
+CC      = $(FREELINX_CC)
+SYSROOT ?= $(FREELINX_SYSROOT)
+TARGET  := $(FREELINX_TARGET)
+DESTDIR ?= $(FREELINX_ROOTFS_DIR)
+
+CFLAGS  ?= -O3 -Wall -Wextra --target=$(TARGET) --sysroot=$(SYSROOT) -I$(FREELINX_DRIVERS_ROOT)/include -include $(FREELINX_DRIVERS_ROOT)/include/linux/compiler.h
 LDFLAGS ?= -fuse-ld=lld --rtlib=compiler-rt -static -lm
 
 BIN     := flx3dtest

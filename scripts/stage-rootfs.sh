@@ -6,7 +6,10 @@
 set -eu
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-TARGET_ROOTFS="${1:-/home/devuan/FreeLinX/src/rootfs}"
+# No hard-coded developer paths: the default rootfs is the src sibling repo's
+# rootfs tree, overridable with FREELINX_ROOTFS_DIR (or an argument).
+FREELINX_WORKSPACE="${FREELINX_WORKSPACE:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+TARGET_ROOTFS="${1:-${FREELINX_ROOTFS_DIR:-$FREELINX_WORKSPACE/src/rootfs}}"
 
 echo "=================================================="
 echo "FreeLinX Full Hardware & Driver Subsystem Staging"
@@ -77,7 +80,7 @@ fi
 
 # 9. Storage & Filesystem Tools (e2fsprogs, dosfstools)
 echo "[9/10] Staging filesystem tools (ext4, vfat)..."
-E2FS_DIR="/home/devuan/FreeLinX/ports/build/work/e2fsprogs/e2fsprogs-1.47.3"
+E2FS_DIR="${E2FS_DIR:-$FREELINX_WORKSPACE/ports/build/work/e2fsprogs/e2fsprogs-1.47.3}"
 if [ -x "$E2FS_DIR/misc/mke2fs" ]; then
     install -m 755 "$E2FS_DIR/misc/mke2fs" "$TARGET_ROOTFS/sbin/mke2fs"
     ln -sf mke2fs "$TARGET_ROOTFS/sbin/mkfs.ext4"
@@ -95,7 +98,7 @@ if [ -x "$E2FS_DIR/resize/resize2fs" ]; then
     install -m 755 "$E2FS_DIR/resize/resize2fs" "$TARGET_ROOTFS/sbin/resize2fs"
 fi
 
-FAT_DIR="/home/devuan/FreeLinX/ports/build/work/dosfstools/dosfstools-4.2/src"
+FAT_DIR="${FAT_DIR:-$FREELINX_WORKSPACE/ports/build/work/dosfstools/dosfstools-4.2/src}"
 if [ -x "$FAT_DIR/mkfs.fat" ]; then
     install -m 755 "$FAT_DIR/mkfs.fat" "$TARGET_ROOTFS/sbin/mkfs.fat"
     ln -sf mkfs.fat "$TARGET_ROOTFS/sbin/mkfs.vfat"
@@ -111,7 +114,7 @@ fi
 
 # 10. Hotplug (mdevd), Automount, User Privileges (doas)
 echo "[10/10] Configuring Hotplug (mdevd), Automount, and Security (doas)..."
-MDEVD_DIR="/home/devuan/FreeLinX/ports/build/work/mdevd/mdevd-0.1.8.1"
+MDEVD_DIR="${MDEVD_DIR:-$FREELINX_WORKSPACE/ports/build/work/mdevd/mdevd-0.1.8.1}"
 if [ -x "$MDEVD_DIR/mdevd" ]; then
     install -m 755 "$MDEVD_DIR/mdevd" "$TARGET_ROOTFS/sbin/mdevd"
 fi

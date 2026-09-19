@@ -21,3 +21,5 @@ audio/tinyalsa/tinycap
 audio/tinyalsa/tinypcminfo
 audio/tinyalsa/libtinyalsa.a
 modules/flx-dummy/flx_dummy.ko
+power/flxpower
+installer/flxpart

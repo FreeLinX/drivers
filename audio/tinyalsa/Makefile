@@ -1,10 +1,15 @@
 # FreeLinX TinyALSA (Non-GNU Audio Driver & Utilities) Makefile
-CC      := /home/devuan/FreeLinX/toolchain/bin/clang
-AR      := /home/devuan/FreeLinX/toolchain/bin/llvm-ar
-SYSROOT := /home/devuan/FreeLinX/toolchain/x86_64-linux-musl
-TARGET  := x86_64-linux-musl
+# Shared toolchain configuration (no hard-coded developer paths); all
+# FREELINX_* variables are overridable from the environment.
+include ../../mk/common.mk
 
-CFLAGS  := -O2 -Wall -Wextra --target=$(TARGET) --sysroot=$(SYSROOT) -Iinclude -fPIC
+CC      = $(FREELINX_CC)
+AR      = $(FREELINX_AR)
+SYSROOT ?= $(FREELINX_SYSROOT)
+TARGET  := $(FREELINX_TARGET)
+DESTDIR ?= $(FREELINX_ROOTFS_DIR)
+
+CFLAGS  := -O2 -Wall -Wextra --target=$(TARGET) --sysroot=$(SYSROOT) -I$(FREELINX_DRIVERS_ROOT)/include -include $(FREELINX_DRIVERS_ROOT)/include/linux/compiler.h -Iinclude -fPIC
 LDFLAGS := -fuse-ld=lld --rtlib=compiler-rt -static
 
 LIB_SRCS := src/mixer.c src/mixer_hw.c src/mixer_plugin.c src/pcm.c src/pcm_hw.c src/pcm_plugin.c src/snd_card_plugin.c src/limits.c

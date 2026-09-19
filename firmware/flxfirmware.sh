@@ -9,7 +9,11 @@ set -eu
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 MANIFEST="$SCRIPT_DIR/manifests/essential-wifi.txt"
-DESTDIR="${1:-/home/devuan/FreeLinX/src/rootfs}"
+# No hard-coded developer paths: the default rootfs is the src sibling repo's
+# rootfs tree, overridable with FREELINX_ROOTFS_DIR (or an argument).
+FREELINX_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+FREELINX_WORKSPACE="${FREELINX_WORKSPACE:-$(cd "$FREELINX_ROOT/.." && pwd)}"
+DESTDIR="${1:-${FREELINX_ROOTFS_DIR:-$FREELINX_WORKSPACE/src/rootfs}}"
 FW_DIR="$DESTDIR/lib/firmware"
 
 echo "=== FreeLinX Firmware Manager ==="

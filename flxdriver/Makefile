@@ -1,7 +1,12 @@
 # FreeLinX Driver Manager Makefile
-CC      := /home/devuan/FreeLinX/toolchain/bin/clang
-SYSROOT := /home/devuan/FreeLinX/toolchain/x86_64-linux-musl
-TARGET  := x86_64-linux-musl
+# Shared toolchain configuration (no hard-coded developer paths); all
+# FREELINX_* variables are overridable from the environment.
+include ../mk/common.mk
+
+CC      = $(FREELINX_CC)
+SYSROOT ?= $(FREELINX_SYSROOT)
+TARGET  := $(FREELINX_TARGET)
+DESTDIR ?= $(FREELINX_ROOTFS_DIR)
 
 CFLAGS  ?= -O2 -Wall -Wextra --target=$(TARGET) --sysroot=$(SYSROOT)
 LDFLAGS ?= -fuse-ld=lld --rtlib=compiler-rt -static
