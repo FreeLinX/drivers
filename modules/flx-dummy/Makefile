@@ -1,7 +1,11 @@
 # FreeLinX Kernel Module Makefile (flx-dummy)
 # Shared configuration (no hard-coded developer paths); all FREELINX_*
 # variables are overridable from the environment.
-include ../../mk/common.mk
+#
+# kbuild re-parses this Makefile with CWD == the kernel source dir, so the
+# common.mk include must resolve from this file's own location, not from
+# the current working directory.
+include $(abspath $(dir $(lastword $(MAKEFILE_LIST)))../../mk/common.mk)
 
 obj-m := flx_dummy.o
 
