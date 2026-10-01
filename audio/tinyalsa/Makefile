@@ -10,7 +10,9 @@ TARGET  := $(FREELINX_TARGET)
 DESTDIR ?= $(FREELINX_ROOTFS_DIR)
 
 CFLAGS  := -O2 -Wall -Wextra --target=$(TARGET) --sysroot=$(SYSROOT) -I$(FREELINX_DRIVERS_ROOT)/include -include $(FREELINX_DRIVERS_ROOT)/include/linux/compiler.h -Iinclude -fPIC
-LDFLAGS := -fuse-ld=lld --rtlib=compiler-rt -static
+CRT_DIR := $(SYSROOT)/lib
+LDFLAGS := -nostdlib $(CRT_DIR)/crt1.o $(CRT_DIR)/crti.o -lc $(CRT_DIR)/crtn.o \
+	   -fuse-ld=lld --rtlib=compiler-rt -static
 
 LIB_SRCS := src/mixer.c src/mixer_hw.c src/mixer_plugin.c src/pcm.c src/pcm_hw.c src/pcm_plugin.c src/snd_card_plugin.c src/limits.c
 LIB_OBJS := $(LIB_SRCS:.c=.o)
