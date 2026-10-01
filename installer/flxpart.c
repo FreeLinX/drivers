@@ -7,6 +7,9 @@
  *   - Primary GPT Header (LBA 1) & Entries (LBA 2..33)
  *   - ESP Partition (512MB, Type C12A7328-F81F-11D2-BA4B-00A0C93EC93B)
  *   - BIOS Boot Partition (1MB, Type 21686148-6449-6E6F-744E-656564454649)
+ *   - System Partition FLX_SYS (2GB by default, Type 0FC63DAF...). Carries
+ *     the persistent /usr /etc /var /root trees of installed systems so
+ *     xpkg-installed packages and config survive reboots.
  *   - Home/Data Partition (Remainder, Type 0FC63DAF-8483-4772-8E79-3D69D8477DE4)
  *   - Backup GPT Entries & Backup GPT Header
  *
@@ -196,8 +199,10 @@ static void print_usage(const char *prog) {
     printf("FreeLinX GPT Partitioning Utility (flxpart)\n");
     printf("Usage: %s [options] <device>\n", prog);
     printf("Options:\n");
-    printf("  --create-standard    Create ESP (512MB) + BIOS Boot (1MB) + Linux Home/Data (remainder)\n");
+    printf("  --create-standard    Create ESP + BIOS Boot + FLX_SYS + Home/Data (remainder)\n");
     printf("  --esp-size <MB>      Set ESP partition size in MB (default: 512)\n");
+    printf("  --flx-sys-size <MB>  Set FLX_SYS partition size in MB (default: 2048)\n");
+    printf("  --no-flx-sys         Omit the FLX_SYS partition (ESP + BIOS + Home only)\n");
     printf("  --show               Show partition table of device\n");
     printf("  --help               Display this help message\n");
 }
@@ -212,6 +217,8 @@ int main(int argc, char **argv) {
     int opt_create = 0;
     int opt_show = 0;
     uint64_t esp_size_mb = 512;
+    uint64_t flx_sys_size_mb = 2048;
+    int opt_no_flx_sys = 0;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--create-standard") == 0) {
@@ -221,6 +228,11 @@ int main(int argc, char **argv) {
         } else if (strcmp(argv[i], "--esp-size") == 0 && i + 1 < argc) {
             esp_size_mb = strtoull(argv[++i], NULL, 10);
             if (esp_size_mb < 64) esp_size_mb = 64;
+        } else if (strcmp(argv[i], "--flx-sys-size") == 0 && i + 1 < argc) {
+            flx_sys_size_mb = strtoull(argv[++i], NULL, 10);
+            if (flx_sys_size_mb < 256) flx_sys_size_mb = 256;
+        } else if (strcmp(argv[i], "--no-flx-sys") == 0) {
+            opt_no_flx_sys = 1;
         } else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
             print_usage(argv[0]);
             return 0;
@@ -339,7 +351,23 @@ int main(int argc, char **argv) {
     uint64_t bios_end = bios_start + bios_boot_sectors - 1;
 
     uint64_t last_usable = total_sectors - 34;
-    uint64_t root_start = bios_end + 1;
+
+    /* FLX_SYS partition: persistent /usr /etc /var /root of installed
+     * systems. Omitted with --no-flx-sys. */
+    uint64_t flx_sys_sectors = 0;
+    uint64_t flx_sys_start = 0;
+    uint64_t flx_sys_end = 0;
+    if (!opt_no_flx_sys) {
+        flx_sys_sectors = (flx_sys_size_mb * 1024 * 1024) / SECTOR_SIZE;
+        /* clamp so the Home partition always keeps at least 256MB */
+        if (flx_sys_sectors > last_usable - bios_end - 1 - (256 * 1024 * 1024) / SECTOR_SIZE) {
+            flx_sys_sectors = last_usable - bios_end - 1 - (256 * 1024 * 1024) / SECTOR_SIZE;
+        }
+        flx_sys_start = bios_end + 1;
+        flx_sys_end = flx_sys_start + flx_sys_sectors - 1;
+    }
+
+    uint64_t root_start = (flx_sys_end ? flx_sys_end : bios_end) + 1;
     uint64_t root_end = last_usable;
 
     /* Partition 1: ESP */
@@ -358,13 +386,23 @@ int main(int argc, char **argv) {
     entries[1].attributes = 0;
     ascii_to_utf16le("FreeLinX BIOS Boot", entries[1].name, 36);
 
-    /* Partition 3: Linux Data (used as persistent /home) */
-    entries[2].type_guid = GUID_LINUX_ROOT;
-    generate_uuid(&entries[2].unique_guid);
-    entries[2].starting_lba = root_start;
-    entries[2].ending_lba = root_end;
-    entries[2].attributes = 0;
-    ascii_to_utf16le("FreeLinX Home", entries[2].name, 36);
+    /* Partition 3: FLX_SYS (persistent system state; ext4, LABEL=FLX_SYS) */
+    if (!opt_no_flx_sys) {
+        entries[2].type_guid = GUID_LINUX_ROOT;
+        generate_uuid(&entries[2].unique_guid);
+        entries[2].starting_lba = flx_sys_start;
+        entries[2].ending_lba = flx_sys_end;
+        entries[2].attributes = 0;
+        ascii_to_utf16le("FreeLinX System", entries[2].name, 36);
+    }
+
+    /* Partition 4: Linux Data (used as persistent /home) */
+    entries[opt_no_flx_sys ? 2 : 3].type_guid = GUID_LINUX_ROOT;
+    generate_uuid(&entries[opt_no_flx_sys ? 2 : 3].unique_guid);
+    entries[opt_no_flx_sys ? 2 : 3].starting_lba = root_start;
+    entries[opt_no_flx_sys ? 2 : 3].ending_lba = root_end;
+    entries[opt_no_flx_sys ? 2 : 3].attributes = 0;
+    ascii_to_utf16le("FreeLinX Home", entries[opt_no_flx_sys ? 2 : 3].name, 36);
 
     uint32_t entries_crc = crc32(entries, sizeof(entries));
 
@@ -441,10 +479,13 @@ int main(int argc, char **argv) {
     }
     close(fd);
 
-    char esp_uuid[64], bios_uuid[64], root_uuid[64];
+    char esp_uuid[64], bios_uuid[64], root_uuid[64], sys_uuid[64];
     format_guid(&entries[0].unique_guid, esp_uuid, sizeof(esp_uuid));
     format_guid(&entries[1].unique_guid, bios_uuid, sizeof(bios_uuid));
-    format_guid(&entries[2].unique_guid, root_uuid, sizeof(root_uuid));
+    format_guid(&entries[opt_no_flx_sys ? 2 : 3].unique_guid, root_uuid, sizeof(root_uuid));
+    if (!opt_no_flx_sys) {
+        format_guid(&entries[2].unique_guid, sys_uuid, sizeof(sys_uuid));
+    }
 
     /* Print shell-parseable output variables for the installer script */
     printf("\n[SUCCESS] GPT Partition Table written successfully!\n");
@@ -456,10 +497,16 @@ int main(int argc, char **argv) {
     printf("FLX_PART2_END=%llu\n", (unsigned long long)bios_end);
     printf("FLX_PART2_SIZE_MB=%llu\n", (unsigned long long)(1));
     printf("FLX_PART2_UUID=%s\n", bios_uuid);
-    printf("FLX_PART3_START=%llu\n", (unsigned long long)root_start);
-    printf("FLX_PART3_END=%llu\n", (unsigned long long)root_end);
-    printf("FLX_PART3_SIZE_MB=%llu\n", (unsigned long long)(((root_end - root_start + 1) * SECTOR_SIZE) / (1024 * 1024)));
-    printf("FLX_PART3_UUID=%s\n", root_uuid);
+    if (!opt_no_flx_sys) {
+        printf("FLX_PART3_START=%llu\n", (unsigned long long)flx_sys_start);
+        printf("FLX_PART3_END=%llu\n", (unsigned long long)flx_sys_end);
+        printf("FLX_PART3_SIZE_MB=%llu\n", (unsigned long long)(((flx_sys_end - flx_sys_start + 1) * SECTOR_SIZE) / (1024 * 1024)));
+        printf("FLX_PART3_UUID=%s\n", sys_uuid);
+    }
+    printf("FLX_PART%s_START=%llu\n", opt_no_flx_sys ? "3" : "4", (unsigned long long)root_start);
+    printf("FLX_PART%s_END=%llu\n", opt_no_flx_sys ? "3" : "4", (unsigned long long)root_end);
+    printf("FLX_PART%s_SIZE_MB=%llu\n", opt_no_flx_sys ? "3" : "4", (unsigned long long)(((root_end - root_start + 1) * SECTOR_SIZE) / (1024 * 1024)));
+    printf("FLX_PART%s_UUID=%s\n", opt_no_flx_sys ? "3" : "4", root_uuid);
 
     return 0;
 }
