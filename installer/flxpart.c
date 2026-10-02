@@ -13,6 +13,15 @@
  *   - Home/Data Partition (Remainder, Type 0FC63DAF-8483-4772-8E79-3D69D8477DE4)
  *   - Backup GPT Entries & Backup GPT Header
  *
+ * --create-data lays out a single Linux filesystem partition over the whole
+ * disk instead (the base installer's "data" mode: /var on disk, system in RAM).
+ *
+ * After a create, every partition is reported on stdout as shell-parseable
+ * FLX_PART<n>_* keys.  FLX_PART<n>_TYPE is the type GUID in on-disk byte order
+ * (ESP = 28732AC1-1FF8-D211-BA4B-00A0C93EC93B), which is what installers match
+ * on.  --dry-run computes and reports the same layout without writing; -q drops
+ * the human-readable lines so stdout carries only the keys.
+ *
  * Re-reads kernel partition table via ioctl(BLKRRPART).
  *
  * Copyright (c) 2026 FreeLinX OS Project.
@@ -169,6 +178,15 @@ static void format_guid(const guid_t *g, char *out, size_t out_len) {
              g->node[0], g->node[1], g->node[2], g->node[3], g->node[4], g->node[5]);
 }
 
+/* The GUID's 16 bytes as stored on disk, grouped 4-2-2-2-6. */
+static void format_guid_raw(const guid_t *g, char *out, size_t out_len) {
+    const uint8_t *b = (const uint8_t *)g;
+    snprintf(out, out_len,
+             "%02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X",
+             b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7],
+             b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15]);
+}
+
 static void ascii_to_utf16le(const char *src, uint16_t *dst, size_t max_chars) {
     for (size_t i = 0; i < max_chars; i++) {
         if (src[i] == '\0') {
@@ -200,9 +218,12 @@ static void print_usage(const char *prog) {
     printf("Usage: %s [options] <device>\n", prog);
     printf("Options:\n");
     printf("  --create-standard    Create ESP + BIOS Boot + FLX_SYS + Home/Data (remainder)\n");
+    printf("  --create-data        Create one Linux data partition over the whole disk\n");
     printf("  --esp-size <MB>      Set ESP partition size in MB (default: 512)\n");
     printf("  --flx-sys-size <MB>  Set FLX_SYS partition size in MB (default: 2048)\n");
     printf("  --no-flx-sys         Omit the FLX_SYS partition (ESP + BIOS + Home only)\n");
+    printf("  --dry-run            Compute and report the layout, write nothing\n");
+    printf("  -q, --quiet          Print only the FLX_PART<n>_* keys\n");
     printf("  --show               Show partition table of device\n");
     printf("  --help               Display this help message\n");
 }
@@ -219,10 +240,20 @@ int main(int argc, char **argv) {
     uint64_t esp_size_mb = 512;
     uint64_t flx_sys_size_mb = 2048;
     int opt_no_flx_sys = 0;
+    int opt_data = 0;
+    int opt_dry = 0;
+    int opt_quiet = 0;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--create-standard") == 0) {
             opt_create = 1;
+        } else if (strcmp(argv[i], "--create-data") == 0) {
+            opt_create = 1;
+            opt_data = 1;
+        } else if (strcmp(argv[i], "--dry-run") == 0) {
+            opt_dry = 1;
+        } else if (strcmp(argv[i], "-q") == 0 || strcmp(argv[i], "--quiet") == 0) {
+            opt_quiet = 1;
         } else if (strcmp(argv[i], "--show") == 0) {
             opt_show = 1;
         } else if (strcmp(argv[i], "--esp-size") == 0 && i + 1 < argc) {
@@ -238,6 +269,11 @@ int main(int argc, char **argv) {
             return 0;
         } else if (argv[i][0] != '-') {
             device = argv[i];
+        } else {
+            /* An unknown option must not be skipped: an old flxpart that
+             * ignored --dry-run wrote the table it was asked only to show. */
+            fprintf(stderr, "Error: unknown option '%s'\n", argv[i]);
+            return 1;
         }
     }
 
@@ -246,7 +282,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    int flags = opt_create ? O_RDWR : O_RDONLY;
+    int flags = (opt_create && !opt_dry) ? O_RDWR : O_RDONLY;
     int fd = open(device, flags);
     if (fd < 0) {
         fprintf(stderr, "Error opening '%s': %s\n", device, strerror(errno));
@@ -318,8 +354,9 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    printf("=== Initializing GPT on %s (%.2f GB) ===\n",
-           device, (double)disk_bytes / (1024.0 * 1024.0 * 1024.0));
+    if (!opt_quiet)
+        printf("=== %s GPT on %s (%.2f GB) ===\n",
+           opt_dry ? "Dry run: computing" : "Initializing", device, (double)disk_bytes / (1024.0 * 1024.0 * 1024.0));
 
     /* 1. Construct Protective MBR */
     mbr_t mbr;
@@ -340,6 +377,16 @@ int main(int argc, char **argv) {
     gpt_entry_t entries[GPT_ENTRIES];
     memset(entries, 0, sizeof(entries));
 
+    uint64_t last_usable = total_sectors - 34;
+
+    if (opt_data) {
+        /* One Linux filesystem, the whole disk. */
+        entries[0].type_guid = GUID_LINUX_ROOT;
+        generate_uuid(&entries[0].unique_guid);
+        entries[0].starting_lba = 2048;
+        entries[0].ending_lba = last_usable;
+        ascii_to_utf16le("FreeLinX Data", entries[0].name, 36);
+    } else {
     uint64_t esp_sectors = (esp_size_mb * 1024 * 1024) / SECTOR_SIZE;
     uint64_t esp_start = 2048; /* 1MB boundary */
     uint64_t esp_end = esp_start + esp_sectors - 1;
@@ -349,8 +396,6 @@ int main(int argc, char **argv) {
     uint64_t bios_boot_sectors = (1 * 1024 * 1024) / SECTOR_SIZE;
     uint64_t bios_start = esp_end + 1;
     uint64_t bios_end = bios_start + bios_boot_sectors - 1;
-
-    uint64_t last_usable = total_sectors - 34;
 
     /* FLX_SYS partition: persistent /usr /etc /var /root of installed
      * systems. Omitted with --no-flx-sys. */
@@ -403,6 +448,7 @@ int main(int argc, char **argv) {
     entries[opt_no_flx_sys ? 2 : 3].ending_lba = root_end;
     entries[opt_no_flx_sys ? 2 : 3].attributes = 0;
     ascii_to_utf16le("FreeLinX Home", entries[opt_no_flx_sys ? 2 : 3].name, 36);
+    }
 
     uint32_t entries_crc = crc32(entries, sizeof(entries));
 
@@ -414,7 +460,9 @@ int main(int argc, char **argv) {
     primary_hdr.header_size = 92;
     primary_hdr.current_lba = 1;
     primary_hdr.backup_lba = total_sectors - 1;
-    primary_hdr.first_usable_lba = 34;
+    /* 2048, not 34: every partition starts on a 1 MiB boundary, so the
+     * header says so and no tool squeezes a partition into the gap. */
+    primary_hdr.first_usable_lba = 2048;
     primary_hdr.last_usable_lba = last_usable;
     generate_uuid(&primary_hdr.disk_guid);
     primary_hdr.partition_entry_lba = 2;
@@ -432,6 +480,7 @@ int main(int argc, char **argv) {
     backup_hdr.header_crc32 = crc32(&backup_hdr, 92);
 
     /* 5. Write to Disk */
+    if (!opt_dry) {
     /* Sector 0: Protective MBR */
     if (pwrite(fd, &mbr, sizeof(mbr), 0) != sizeof(mbr)) {
         fprintf(stderr, "Error writing MBR: %s\n", strerror(errno));
@@ -470,43 +519,42 @@ int main(int argc, char **argv) {
     fsync(fd);
 
     /* Notify Kernel */
-    printf("Informing kernel of new partition layout...\n");
+    if (!opt_quiet)
+        printf("Informing kernel of new partition layout...\n");
     if (ioctl(fd, BLKRRPART, 0) < 0) {
         /* Not fatal on image files or when partitions busy */
         if (errno != ENOTTY && errno != EINVAL) {
             fprintf(stderr, "Notice: BLKRRPART ioctl: %s (run partprobe if needed)\n", strerror(errno));
         }
     }
+    }
     close(fd);
 
-    char esp_uuid[64], bios_uuid[64], root_uuid[64], sys_uuid[64];
-    format_guid(&entries[0].unique_guid, esp_uuid, sizeof(esp_uuid));
-    format_guid(&entries[1].unique_guid, bios_uuid, sizeof(bios_uuid));
-    format_guid(&entries[opt_no_flx_sys ? 2 : 3].unique_guid, root_uuid, sizeof(root_uuid));
-    if (!opt_no_flx_sys) {
-        format_guid(&entries[2].unique_guid, sys_uuid, sizeof(sys_uuid));
+    /* Print shell-parseable output variables for the installer scripts.
+     * Numbering is the GPT entry index, which is the partition number. */
+    if (!opt_quiet)
+        printf("\n[SUCCESS] GPT Partition Table %s!\n",
+               opt_dry ? "computed (dry run, nothing written)" : "written successfully");
+    printf("FLX_DISK_FIRST_USABLE=%llu\n", (unsigned long long)primary_hdr.first_usable_lba);
+    printf("FLX_DISK_LAST_USABLE=%llu\n", (unsigned long long)primary_hdr.last_usable_lba);
+    for (int i = 0; i < GPT_ENTRIES; i++) {
+        const gpt_entry_t *e = &entries[i];
+        if (e->starting_lba == 0 && e->ending_lba == 0) continue;
+        uint64_t sectors = e->ending_lba - e->starting_lba + 1;
+        char uuid[64], type[64];
+        format_guid(&e->unique_guid, uuid, sizeof(uuid));
+        format_guid_raw(&e->type_guid, type, sizeof(type));
+        printf("FLX_PART%d_START=%llu\n", i + 1, (unsigned long long)e->starting_lba);
+        printf("FLX_PART%d_END=%llu\n", i + 1, (unsigned long long)e->ending_lba);
+        printf("FLX_PART%d_FIRST=%llu\n", i + 1, (unsigned long long)e->starting_lba);
+        printf("FLX_PART%d_LAST=%llu\n", i + 1, (unsigned long long)e->ending_lba);
+        printf("FLX_PART%d_SIZE_MB=%llu\n", i + 1,
+               (unsigned long long)(sectors * SECTOR_SIZE / (1024 * 1024)));
+        printf("FLX_PART%d_SIZE_BYTES=%llu\n", i + 1,
+               (unsigned long long)(sectors * SECTOR_SIZE));
+        printf("FLX_PART%d_UUID=%s\n", i + 1, uuid);
+        printf("FLX_PART%d_TYPE=%s\n", i + 1, type);
     }
-
-    /* Print shell-parseable output variables for the installer script */
-    printf("\n[SUCCESS] GPT Partition Table written successfully!\n");
-    printf("FLX_PART1_START=%llu\n", (unsigned long long)esp_start);
-    printf("FLX_PART1_END=%llu\n", (unsigned long long)esp_end);
-    printf("FLX_PART1_SIZE_MB=%llu\n", (unsigned long long)esp_size_mb);
-    printf("FLX_PART1_UUID=%s\n", esp_uuid);
-    printf("FLX_PART2_START=%llu\n", (unsigned long long)bios_start);
-    printf("FLX_PART2_END=%llu\n", (unsigned long long)bios_end);
-    printf("FLX_PART2_SIZE_MB=%llu\n", (unsigned long long)(1));
-    printf("FLX_PART2_UUID=%s\n", bios_uuid);
-    if (!opt_no_flx_sys) {
-        printf("FLX_PART3_START=%llu\n", (unsigned long long)flx_sys_start);
-        printf("FLX_PART3_END=%llu\n", (unsigned long long)flx_sys_end);
-        printf("FLX_PART3_SIZE_MB=%llu\n", (unsigned long long)(((flx_sys_end - flx_sys_start + 1) * SECTOR_SIZE) / (1024 * 1024)));
-        printf("FLX_PART3_UUID=%s\n", sys_uuid);
-    }
-    printf("FLX_PART%s_START=%llu\n", opt_no_flx_sys ? "3" : "4", (unsigned long long)root_start);
-    printf("FLX_PART%s_END=%llu\n", opt_no_flx_sys ? "3" : "4", (unsigned long long)root_end);
-    printf("FLX_PART%s_SIZE_MB=%llu\n", opt_no_flx_sys ? "3" : "4", (unsigned long long)(((root_end - root_start + 1) * SECTOR_SIZE) / (1024 * 1024)));
-    printf("FLX_PART%s_UUID=%s\n", opt_no_flx_sys ? "3" : "4", root_uuid);
 
     return 0;
 }
