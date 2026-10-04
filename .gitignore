@@ -23,3 +23,7 @@ audio/tinyalsa/libtinyalsa.a
 modules/flx-dummy/flx_dummy.ko
 power/flxpower
 installer/flxpart
+
+# build outputs (sources: flx3dtest/, flxdriver/)
+/flx-3dtest/
+/flx-driver/
