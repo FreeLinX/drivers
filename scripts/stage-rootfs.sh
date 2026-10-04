@@ -74,6 +74,14 @@ fi
 if [ -f "$SCRIPT_DIR/bootloader/limine-binary/limine-bios.sys" ]; then
     install -m 644 "$SCRIPT_DIR/bootloader/limine-binary/limine-bios.sys" "$TARGET_ROOTFS/usr/share/limine/limine-bios.sys"
 fi
+# limine-bios-hdd.h is the boot sector limine bios-install writes into the
+# drive itself.  Without it the BIOS installer has no stage 1 to write, so a
+# disk install stops after the MBR and never reaches limine-bios.sys.  It was
+# missing here even though the port ships it, so setup-disk.sh had to warn
+# that a BIOS boot could not work.
+if [ -f "$SCRIPT_DIR/bootloader/limine-binary/limine-bios-hdd.h" ]; then
+    install -m 644 "$SCRIPT_DIR/bootloader/limine-binary/limine-bios-hdd.h" "$TARGET_ROOTFS/usr/share/limine/limine-bios-hdd.h"
+fi
 if [ -x "$SCRIPT_DIR/bootloader/limine-binary/limine" ]; then
     install -m 755 "$SCRIPT_DIR/bootloader/limine-binary/limine" "$TARGET_ROOTFS/usr/bin/limine"
 fi
